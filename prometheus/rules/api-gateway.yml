@@ -1,0 +1,45 @@
+groups:
+  - name: api-gateway
+    interval: 30s
+    rules:
+      - alert: APIGatewayDown
+        expr: up{job="api-gateway"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: gateway
+        annotations:
+          summary: "API Gateway 服务不可用"
+          description: "API Gateway 已经停止响应超过 1 分钟"
+
+      - alert: APIGatewayHighErrorRate
+        expr: |
+          sum(rate(api_requests_total{status=~"5.."}[5m])) 
+          / sum(rate(api_requests_total[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          component: gateway
+        annotations:
+          summary: "API Gateway 错误率过高"
+          description: "5xx 错误率超过 5%，当前值: {{ $value | humanizePercentage }}"
+
+      - alert: APIGatewayHighLatency
+        expr: histogram_quantile(0.99, sum(rate(api_latency_seconds_bucket{job="api-gateway"}[5m])) by (le)) > 5
+        for: 5m
+        labels:
+          severity: warning
+          component: gateway
+        annotations:
+          summary: "API Gateway 响应延迟过高"
+          description: "P99 延迟超过 5 秒"
+
+      - alert: APIGatewayHighRequestRate
+        expr: sum(rate(api_requests_total[5m])) > 10000
+        for: 10m
+        labels:
+          severity: warning
+          component: gateway
+        annotations:
+          summary: "API Gateway 请求速率异常"
+          description: "请求速率超过 10000 req/s"

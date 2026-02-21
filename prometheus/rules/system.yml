@@ -1,0 +1,88 @@
+groups:
+  - name: system
+    interval: 30s
+    rules:
+      - alert: NodeDown
+        expr: up{job="node"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: system
+        annotations:
+          summary: "Node Exporter 不可用"
+          description: "节点 {{ $labels.instance }} 已经停止响应"
+
+      - alert: HighCPUUsage
+        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 10m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "CPU 使用率过高"
+          description: "CPU 使用率超过 80%: {{ $value | humanizePercentage }}"
+
+      - alert: HighMemoryUsage
+        expr: |
+          100 * (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 85
+        for: 10m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "内存使用率过高"
+          description: "内存使用率超过 85%: {{ $value | humanizePercentage }}"
+
+      - alert: HighDiskUsage
+        expr: |
+          100 * (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) < 10
+        for: 30m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "磁盘空间不足"
+          description: "磁盘使用率超过 90%"
+
+      - alert: DiskInodeExhausted
+        expr: node_filesystem_files_free{mountpoint="/"} / node_filesystem_files{mountpoint="/"} < 0.1
+        for: 30m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "Inode 资源不足"
+          description: "Inode 使用率超过 90%"
+
+      - alert: NetworkConnectionIssues
+        expr: |
+          rate(node_network_receive_errors_total[5m]) > 0.01
+          or
+          rate(node_network_transmit_errors_total[5m]) > 0.01
+        for: 5m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "网络连接异常"
+          description: "网络 {{ $labels.device }} 错误率过高"
+
+      - alert: LoadAverageHigh
+        expr: node_load1 / count(node_cpu_seconds_total{mode="idle"}) > 4
+        for: 15m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "系统负载过高"
+          description: "系统负载超过 CPU 核心数的 4 倍"
+
+      - alert: ContainerDown
+        expr: up{job="cadvisor"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: container
+        annotations:
+          summary: "容器监控不可用"
+          description: "Cadvisor 已经停止响应"

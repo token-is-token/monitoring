@@ -1,0 +1,58 @@
+groups:
+  - name: provider-node
+    interval: 30s
+    rules:
+      - alert: ProviderNodeDown
+        expr: up{job="provider-node"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: worker
+        annotations:
+          summary: "Provider Node 服务不可用"
+          description: "Provider Node {{ $labels.instance }} 已经停止响应超过 1 分钟"
+
+      - alert: ProviderNodeHighTaskFailureRate
+        expr: |
+          sum(rate(provider_tasks_total{status="failed"}[5m])) 
+          / sum(rate(provider_tasks_total[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+          component: worker
+        annotations:
+          summary: "Provider Node 任务失败率过高"
+          description: "任务失败率超过 10%"
+
+      - alert: ProviderNodeHighTaskLatency
+        expr: histogram_quantile(0.99, sum(rate(provider_task_duration_seconds_bucket[5m])) by (le, instance)) > 30
+        for: 10m
+        labels:
+          severity: warning
+          component: worker
+        annotations:
+          summary: "Provider Node 任务处理延迟过高"
+          description: "P99 延迟超过 30 秒"
+
+      - alert: ProviderNodeTaskQueueBacklog
+        expr: provider_task_queue_size > 1000
+        for: 15m
+        labels:
+          severity: warning
+          component: worker
+        annotations:
+          summary: "Provider Node 任务队列积压"
+          description: "任务队列积压超过 1000 个"
+
+      - alert: ProviderNodeInsufficientResources
+        expr: |
+          provider_node_cpu_usage > 80
+          or
+          provider_node_memory_usage > 85
+        for: 10m
+        labels:
+          severity: warning
+          component: worker
+        annotations:
+          summary: "Provider Node 资源不足"
+          description: "CPU 使用率: {{ $value | humanizePercentage }}, 内存使用率: {{ $value | humanizePercentage }}"

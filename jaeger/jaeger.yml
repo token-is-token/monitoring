@@ -1,0 +1,38 @@
+version: '3.8'
+
+service:
+  collector:
+    zipkin:
+      host-port: 9411
+
+query:
+  base-path: /
+
+span-storage:
+  badger:
+    ephemeral: false
+    path: /var/lib/jaeger/data
+
+  log-level: info
+
+  collector:
+    num-workers: 50
+    queue-size: 2000
+    report-batch-size: 100
+    max-traces-per-span: 10000
+
+    span-storage:
+      type: badger
+
+    sampling:
+      strategies-file: /etc/jaeger/sampling_strategies.json
+
+  agent:
+    reporters:
+      log-spans: true
+      collector-host-port: jaeger-collector:14267
+
+  ui:
+    legacy:
+      tracing:
+        enabled: false
